@@ -198,7 +198,7 @@ def test_a_missing_space_after_a_full_stop_still_ends_the_sentence(joiner):
     ],
 )
 def test_every_character_python_calls_a_line_break_is_a_claim_boundary(name, separator):
-    """`\\n` was the hard break. `str.splitlines()` knows about seven more.
+    """`\\n` was the hard break. `str.splitlines()` knows about nine more.
 
     This matters because the model chooses the bytes. If it emits U+2028 rather
     than U+000A, an editor renders a list and the segmenter sees one line.

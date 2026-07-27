@@ -15,7 +15,7 @@ them were the shipped behaviour until 2026-07-27.
     python3 mutations/run.py            # run them all
     python3 mutations/run.py -v         # print the failing test names
 
-Takes about fifteen seconds: one full suite run per mutant, in a throwaway copy
+Takes about thirty seconds: one full suite run per mutant, in a throwaway copy
 of the tree. The working tree is never modified.
 """
 

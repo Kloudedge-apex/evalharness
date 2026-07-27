@@ -66,8 +66,9 @@ deliberately wrong implementation once beat the real one.
 
 ## What this is not
 
-- Not production code. It is a few hundred lines with no persistence, no
-  concurrency, no queue, no observability, and no deployment story.
+- Not production code. It is about 1,700 lines of library and about the same
+  again of tests, with no persistence, no concurrency, no queue, no
+  observability, and no deployment story.
 - Not extracted from any employer, customer or company codebase. No customer
   data and no proprietary logic. Every company, person, address, key and number
   in the fixtures is invented. The card number is the public test value.
@@ -248,7 +249,8 @@ layer and how I think about gating.
    structural (fixtures 18 to 20). Three more turned up only when the second
    reviewer stopped assuming the model writes ASCII English: a full stop with no
    space after it was not a boundary, `\r`, `\v`, `\f`, `\x1c` and U+2028 were
-   not hard breaks, and `。` was not a terminator (fixture 26). There is no
+   not hard breaks (fixture 26 pins the first of those and U+2028), and `。` was
+   not a terminator (`test_an_ideographic_full_stop_ends_a_claim`). There is no
    reason to think that is all of them. If you are looking for the next one,
    this is still the file.
 2. The factual claim classifier defaults to "this needs a citation" and exempts
@@ -268,10 +270,10 @@ layer and how I think about gating.
    incomplete. An exemption list is a whitelist one level down. The attack is
    not "write a sentence the classifier has never heard of", it is "wrap an
    allegation in something the exemption list has heard of", and on 2026-07-27
-   that worked in both directions: `Note that <nine words of allegation>` was
-   exempt because of its first word, and `<nine words of allegation>, as set out
-   below` was exempt because of its last. Fixtures 23 and 24. The fix is not a
-   longer list, it is a **bound**: an exemption now applies only to a sentence
+   that worked in both directions: `Note that <eleven words of allegation>` was
+   exempt because of its first word, and `<thirteen words of allegation>, as set
+   out below` was exempt because of its last. Fixtures 23 and 24. The fix is not
+   a longer list, it is a **bound**: an exemption now applies only to a sentence
    short enough to be the courtesy line the exemption describes
    (`_EXEMPTION_WORD_LIMIT = 12`). An exemption that recognises a sentence by a
    fragment is a wildcard until something limits how much can hide behind the
@@ -282,25 +284,39 @@ layer and how I think about gating.
    The consequence is that `We believe Northwind Bank laundered two billion
    dollars through its Cyprus branch` is released with no citation and no
    finding. A model that learns to prefix everything with "we believe" defeats
-   this gate. Bounding hedges the way the other exemptions are bounded would
-   close it and would also refuse "I cannot answer that", which is the sentence
-   a refusing model most needs to be able to say. I have not found a version
-   that gets both, so the hole is documented rather than papered over.
+   this gate. Bounding hedges the way the other exemptions are bounded is not
+   the fix it looks like, and the numbers say so in both directions: the
+   sentence above is exactly twelve words, so the twelve word bound leaves it
+   exempt, and "I cannot answer that" is four words, so no bound of that kind
+   ever reaches it. The only thing that closes this is dropping the hedge
+   exemption outright, which refuses every hedged sentence including the
+   refusal itself, and that is the sentence a refusing model most needs to be
+   able to say. So the hole is documented rather than papered over.
+   `segment.py` carries the same reasoning at `_HEDGE`.
 4. The claim weight floor releases very short sentences. A fragment needs three
-   words, or twelve characters, or four characters if any of them is CJK, before
-   it counts as a claim at all, so `Bankrupt.` goes out unsourced.
+   word tokens, or twelve letters, or four characters when the sentence contains
+   CJK, before it counts as a claim at all. Letters is the operative word:
+   `_WORD` matches no digits and no punctuation, so the floor does not see them.
+   `Bankrupt.` goes out unsourced, and so does `$2,000,000,000 laundered.`,
+   which is twenty-five characters and nine letters.
    `test_the_claim_weight_floor_is_a_hole_and_is_asserted_as_one` asserts that
    as current behaviour. The CJK arm of that condition exists because a Latin
    letter is a fraction of a morpheme and a Chinese character is a whole one, so
-   a twelve character floor is the wrong unit for a language written without
+   a twelve letter floor is the wrong unit for a language written without
    spaces: `首席执行官因欺诈被起诉` is eleven characters, one word token, and an
    allegation. That hole was found by `mutations/run.py`, not by a reviewer, and
    the story is under [what a green suite proves](#a-note-on-what-a-green-suite-proves).
 5. Injection detection is a phrase list. A paraphrase, a translation or an
    encoded payload walks past it. `tests/test_injection.py` contains a passing
    test that demonstrates a paraphrase defeating it.
-6. PII detection is regex over mostly US and UK formats. Names alone are not
-   detected at all.
+6. PII detection is regex over a fixed, short list of formats: email addresses,
+   Luhn checked card numbers, US social security numbers, US and Canadian phone
+   numbers, `+country code` phone numbers, and a list of vendor API key
+   prefixes. Only two of those are tied to a jurisdiction: the US social
+   security number, and the North American phone format the US shares with
+   Canada. There is no UK pattern at all, so a National Insurance number, a sort
+   code and a UK domestic mobile all pass through untouched. Names alone are not
+   detected either.
 7. Sourcing is not entailment, as above.
 8. The fixtures are synthetic and I wrote both the fixtures and the code, so the
    agreement number is not independent evidence.
@@ -355,16 +371,22 @@ killed   boundary_requires_whitespace          5 failing  A full stop with no sp
 all 21 mutants killed by the test named for them
 ```
 
-Fourteen of those twenty-one are not hypotheticals. Each restores behaviour this
+Sixteen of those twenty-one are not hypotheticals. Each restores a bypass this
 repository actually shipped at some point on 2026-07-27:
 `partial_gate_constructible`, `no_hard_break_split`, `no_clause_split`,
 `abbreviation_swallows_next_sentence`, `classifier_needs_a_digit`,
 `pii_ascii_separators_only` and `pii_scans_response_only` from the first
-adversarial pass, and `evaluators_read_the_snippet_only`,
+adversarial pass; `evaluators_read_the_snippet_only`,
 `finding_dedup_ignores_the_field`, `injection_determiner_is_a_fixed_list`,
 `secret_check_knows_stripe_only`, `exemptions_are_unbounded`,
-`ascii_hard_breaks_only` and `boundary_requires_whitespace` from the second. The
-other seven are bugs this code never had and could plausibly acquire.
+`ascii_hard_breaks_only` and `boundary_requires_whitespace` from the second; and
+`ascii_terminators_only` and `cjk_claim_weight_floor`, which no reviewer found
+and the mutation run did. Two of the sixteen restore the bypass rather than the
+old code: `classifier_needs_a_digit` is a narrower stand-in for the digits or
+verbs whitelist, and `cjk_claim_weight_floor` reaches the same release by a
+different route, because the shipped `_WORD` was ASCII only and scored that
+sentence at zero tokens rather than one. The other five are bugs this code never
+had and could plausibly acquire.
 
 Writing the harness immediately earned its keep. The first version of
 `classifier_exempts_everything` swapped `.match()` for `.search()`, which I
@@ -422,15 +444,15 @@ interesting ones and they are at the top:
 
 | what got through | why | pinned as |
 | --- | --- | --- |
-| "Note that `<nine words of allegation>`" | `_NON_ASSERTION` was anchored at the start and unbounded at the end, so a three word opener exempted any quantity of allegation behind it | `23_adv_exemption_prefix_laundering` |
-| "`<nine words of allegation>`, as set out below" | `_SELF_REFERENCE` is anchored at the end and was unbounded at the start, so the same trick ran backwards | `24_adv_exemption_suffix_laundering` |
+| "Note that `<eleven words of allegation>`" | `_NON_ASSERTION` was anchored at the start and unbounded at the end, so matching the single word "Note" exempted any quantity of allegation behind it | `23_adv_exemption_prefix_laundering` |
+| "`<thirteen words of allegation>`, as set out below" | `_SELF_REFERENCE` is anchored at the end and was unbounded at the start, so the same trick ran backwards | `24_adv_exemption_suffix_laundering` |
 | an SSN, a card number and an API key in a source's title and url | fixture 22 taught the PII evaluator to read sources; it read `source.snippet` and stopped | `25_adv_pii_in_source_title_and_url` |
 | "…migration on 2026-02-11 [1].Northwind is laundering money" | the guard that protects decimals and abbreviations skipped every full stop not followed by a space | `26_adv_unicode_boundary_bypass` |
-| bullets joined by U+2028, `\r`, `\v`, `\f` or `\x1c` | the hard break class was `\n` and `\r`, while `str.splitlines()` knows eight characters | `test_every_character_python_calls_a_line_break_is_a_claim_boundary` |
+| bullets joined by U+2028, `\r`, `\v`, `\f` or `\x1c` | the hard break class was `\n` alone, while `str.splitlines()` treats ten characters as line breaks | `test_every_character_python_calls_a_line_break_is_a_claim_boundary` |
 | a card number separated by non-breaking or zero-width spaces | the separator class had been widened for typographic dashes but not for invisible spaces | `test_an_invisible_separator_does_not_hide_a_card_number` |
-| "Ignore **all of the** previous instructions" | the determiner between "ignore" and "instructions" was a fixed alternation of five words | `test_one_word_of_paraphrase_does_not_defeat_the_injection_list` |
+| "Ignore **all of the** previous instructions" | the determiner between "ignore" and "instructions" was a fixed alternation of three words (`all`, `any`, `the`) | `test_one_word_of_paraphrase_does_not_defeat_the_injection_list` |
 | an injection phrase in a source's title | same scope bug as the PII one, in the file the PII fix was copied from | `test_an_injection_in_a_source_title_is_found` |
-| an AWS, GitHub, Slack or OpenAI key | the secret check knew `sk_live_` and nothing else | `test_the_secret_check_knows_more_than_one_vendor` |
+| a GitHub, Slack, OpenAI or Google key | the secret check knew Stripe's `sk_live_` family and AWS access key ids, and stopped there | `test_the_secret_check_knows_more_than_one_vendor` |
 | two leaks at the same offset in two fields of one source | the finding key was (source id, offset), so the second one deduplicated away | `test_two_fields_of_one_source_do_not_collapse_into_one_finding` |
 | an allegation in Chinese | one word token, eleven characters, under both claim weight floors | `cjk_claim_weight_floor`, and see above |
 
