@@ -167,9 +167,17 @@ _EXEMPTION_WORD_LIMIT = 12
 # This is a real hole and it is documented in the README as one: a model that
 # prefixes every allegation with "I believe" walks straight through this gate.
 # It is kept because the alternative, refusing every hedged sentence, makes the
-# gate unusable on the drafting workflows it exists for. Bounding it the way
-# the directive openers are bounded would not help; the sentences it covers are
-# long by nature.
+# gate unusable on the drafting workflows it exists for.
+#
+# Bounding it the way the directive openers are bounded is not the fix it looks
+# like, and the arithmetic says so in both directions. "We believe Northwind
+# Bank laundered two billion dollars through its Cyprus branch" is twelve words,
+# so a twelve word bound leaves it exempt; and "I cannot answer that" is four,
+# so no bound low enough to catch the first is high enough to spare the second,
+# which is the one sentence a refusing model most needs to be able to say. The
+# only thing that closes this hole is dropping the exemption outright. So it is
+# documented instead, here and in the README limitations, which quotes this
+# reasoning.
 _HEDGE = re.compile(
     r"""^(?:
           (?:i|we)\s+(?:think|believe|suspect|guess|feel|assume|recommend|suggest|would|could|cannot|can't|do\s+not\s+know|don't\s+know)\b
@@ -397,8 +405,6 @@ def is_factual(sentence: str) -> bool:
     body = strip_citations(sentence).strip()
     if not body:
         return False
-    if _QUESTION.search(body):
-        return False
 
     words = _WORD.findall(body)
 
@@ -406,9 +412,16 @@ def is_factual(sentence: str) -> bool:
     if _HEDGE.match(body):
         return False
 
-    # Prefix and suffix exemptions apply only to sentences short enough to be
-    # the courtesy line they describe. See _EXEMPTION_WORD_LIMIT.
+    # A question mark, a prefix and a suffix are all the same kind of exemption:
+    # a fragment of the sentence standing in for the whole. So all three carry
+    # the same bound. A trailing "?" was unbounded until the third pass over
+    # this file, which made a leading question the cheapest laundering route
+    # left: "Did Northwind Bank launder two billion dollars through its Cyprus
+    # branch and did the board then cover it up?" asserts the whole allegation
+    # and was released with no citation and no finding.
     if len(words) <= _EXEMPTION_WORD_LIMIT:
+        if _QUESTION.search(body):
+            return False
         if _NON_ASSERTION.match(body):
             return False
         if _SELF_REFERENCE.search(body):

@@ -9,8 +9,10 @@ each safety property this repository claims, reintroduces the bug that would
 break it, and requires that a specific named test goes red. A mutant nothing
 catches is a property nobody is actually testing, and the run exits non zero.
 
-Every mutant below is a bug that was really in this code at some point. Seven of
-them were the shipped behaviour until 2026-07-27.
+Eighteen of the mutants below are not hypotheticals: each was the shipped
+behaviour of this repository at some point on 2026-07-27, and the README names
+them and says which pass found each one. The remaining five are bugs this code
+never had and could plausibly acquire.
 
     python3 mutations/run.py            # run them all
     python3 mutations/run.py -v         # print the failing test names
@@ -145,11 +147,12 @@ MUTANTS: Tuple[Mutant, ...] = (
         id="pii_scans_response_only",
         property_broken="Retrieved sources are scanned for leaks, not just the response.",
         path="evalharness/evaluators/base.py",
-        old='    for source in output.sources:\n'
+        old="    for source in output.sources:\n"
         '        location = "source:{0}".format(source.id)\n'
-        '        targets.append((location, "title", source.title))\n'
-        '        targets.append((location, "url", source.url))\n'
-        '        targets.append((location, "snippet", source.snippet))',
+        "        for field in dataclasses.fields(source):\n"
+        "            value = getattr(source, field.name)\n"
+        "            if isinstance(value, str):\n"
+        "                targets.append((location, field.name, value))",
         new="    return targets",
         caught_by=("test_a_leak_inside_a_retrieved_source_is_found_too",),
     ),
@@ -157,12 +160,32 @@ MUTANTS: Tuple[Mutant, ...] = (
         id="evaluators_read_the_snippet_only",
         property_broken="A source is its title and its url too, not only its snippet.",
         path="evalharness/evaluators/base.py",
-        old='        targets.append((location, "title", source.title))\n'
-        '        targets.append((location, "url", source.url))\n',
-        new="",
+        old="        for field in dataclasses.fields(source):\n"
+        "            value = getattr(source, field.name)\n"
+        "            if isinstance(value, str):\n"
+        "                targets.append((location, field.name, value))",
+        new='        targets.append((location, "snippet", source.snippet))',
         caught_by=(
             "test_pii_in_a_source_title_and_url_is_found",
             "test_an_injection_in_a_source_title_is_found",
+        ),
+    ),
+    Mutant(
+        id="published_field_unscanned",
+        property_broken="Every string field of a source is scanned, not a list somebody maintains.",
+        path="evalharness/evaluators/base.py",
+        # The literal shipped behaviour between the second and third passes:
+        # three fields named by hand, and the fourth one left out.
+        old="        for field in dataclasses.fields(source):\n"
+        "            value = getattr(source, field.name)\n"
+        "            if isinstance(value, str):\n"
+        "                targets.append((location, field.name, value))",
+        new='        targets.append((location, "title", source.title))\n'
+        '        targets.append((location, "url", source.url))\n'
+        '        targets.append((location, "snippet", source.snippet))',
+        caught_by=(
+            "test_a_payload_in_the_published_field_of_a_source_is_found",
+            "test_scan_targets_reads_every_string_field_of_a_source",
         ),
     ),
     Mutant(
@@ -206,6 +229,24 @@ MUTANTS: Tuple[Mutant, ...] = (
         caught_by=(
             "test_an_opener_cannot_launder_the_allegation_behind_it",
             "test_a_tail_cannot_launder_the_allegation_in_front_of_it",
+        ),
+    ),
+    Mutant(
+        id="question_exemption_unbounded",
+        property_broken="A question mark is a fragment too, so it carries the same bound as an opener.",
+        path="evalharness/segment.py",
+        # Hoists the question check back out of the length guard, which is
+        # where it sat for two passes while the exemptions either side of it
+        # were being bounded for exactly this reason.
+        old="    if len(words) <= _EXEMPTION_WORD_LIMIT:\n"
+        "        if _QUESTION.search(body):\n"
+        "            return False\n",
+        new="    if _QUESTION.search(body):\n"
+        "        return False\n"
+        "    if len(words) <= _EXEMPTION_WORD_LIMIT:\n",
+        caught_by=(
+            "test_a_leading_question_does_not_launder_an_allegation",
+            "test_the_question_bound_costs_a_long_clarifying_question",
         ),
     ),
     Mutant(

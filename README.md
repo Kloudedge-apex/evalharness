@@ -60,13 +60,13 @@ a sentence, and a sentence is not evidence. This is the same idea in a form you
 can clone and run in under a second, and then try to break.
 
 The interesting content is not the gate. It is the record of the gate being
-wrong: `naive_gate.py`, the two adversarial passes that got past it seven and
-then eleven ways, the twenty-one mutants, and the paragraph below admitting the
-deliberately wrong implementation once beat the real one.
+wrong: `naive_gate.py`, the three adversarial passes that got past it seven,
+then eleven, then two more ways, the twenty-three mutants, and the paragraph
+below admitting the deliberately wrong implementation once beat the real one.
 
 ## What this is not
 
-- Not production code. It is about 1,700 lines of library and about the same
+- Not production code. It is about 1,800 lines of library and about the same
   again of tests, with no persistence, no concurrency, no queue, no
   observability, and no deployment story.
 - Not extracted from any employer, customer or company codebase. No customer
@@ -277,7 +277,14 @@ layer and how I think about gating.
    short enough to be the courtesy line the exemption describes
    (`_EXEMPTION_WORD_LIMIT = 12`). An exemption that recognises a sentence by a
    fragment is a wildcard until something limits how much can hide behind the
-   fragment.
+   fragment. A third pass then found the same bug one line above the fix: a
+   trailing `?` was an exemption of exactly that shape and had been left
+   unbounded, so `Did <allegation> and did the board then cover it up?` went
+   out. Interrogative form is not the same as asserting nothing, and a reader
+   takes the allegation out of the question either way. The question mark now
+   carries the same bound as the opener and the tail, and the cost is in
+   `test_the_question_bound_costs_a_long_clarifying_question`: a fifteen word
+   question that genuinely asks for nothing is now refused.
 3. **Hedges are exempt at any length, and that is the largest hole still open.**
    A sentence reporting the speaker's own state of mind is not checkable against
    a source, so `_HEDGE` is deliberately not bounded by the limit in point 2.
@@ -308,7 +315,14 @@ layer and how I think about gating.
    the story is under [what a green suite proves](#a-note-on-what-a-green-suite-proves).
 5. Injection detection is a phrase list. A paraphrase, a translation or an
    encoded payload walks past it. `tests/test_injection.py` contains a passing
-   test that demonstrates a paraphrase defeating it.
+   test that demonstrates a paraphrase defeating it. It errs in the other
+   direction too, deliberately. The pattern requires an imperative shape, but
+   where the object is unambiguously conversational it does not require a
+   pointer back at the conversation, so "please ignore the instructions on page
+   four" is flagged. On a retrieved source the fail-closed direction is to
+   block, so that trade is taken knowingly; on the model's own response it is a
+   false positive and is the first thing to narrow if this ever runs somewhere
+   the noise matters. `injection.py` says the same at the pattern.
 6. PII detection is regex over a fixed, short list of formats: email addresses,
    Luhn checked card numbers, US social security numbers, US and Canadian phone
    numbers, `+country code` phone numbers, and a list of vendor API key
@@ -338,13 +352,13 @@ runner compares the gate's decision against them, and it exits non zero on
 disagreement.
 
 **2. The mutation check is a script, not a paragraph.** `mutations/run.py`
-reintroduces twenty-one bugs, one at a time, into a throwaway copy of the tree,
+reintroduces twenty-three bugs, one at a time, into a throwaway copy of the tree,
 and requires that a test *named for that property* goes red. A mutant nothing
 catches means the property is not actually tested, and the run exits non zero.
 
 ```
 $ python3 mutations/run.py
-baseline: 312 passed in 1.09s
+baseline: 320 passed in 0.97s
 
 killed   citation_document_scope              48 failing  Citations are bound to the claim they sit in, not to the document.
 killed   evaluator_error_skipped               1 failing  An evaluator that raises blocks. It does not get skipped.
@@ -352,41 +366,45 @@ killed   partial_gate_constructible            2 failing  A gate missing a block
 killed   no_hard_break_split                  21 failing  A newline or a bullet ends a claim.
 killed   no_clause_split                      15 failing  A citation does not extend across 'and' into a second assertion.
 killed   abbreviation_swallows_next_sentence    8 failing  An abbreviation does not merge the sentence after it into itself.
-killed   classifier_needs_a_digit             72 failing  A claim with no digit in it still needs a source.
+killed   classifier_needs_a_digit             74 failing  A claim with no digit in it still needs a source.
 killed   classifier_exempts_everything         4 failing  The exemption list is anchored. An exempt word mid-sentence is not exempt.
 killed   luhn_check_removed                    7 failing  A long digit run is not reported as a card unless it checksums.
 killed   pii_ascii_separators_only            10 failing  A card number with typographic or invisible separators is still a card number.
-killed   pii_scans_response_only              21 failing  Retrieved sources are scanned for leaks, not just the response.
-killed   evaluators_read_the_snippet_only      9 failing  A source is its title and its url too, not only its snippet.
+killed   pii_scans_response_only              23 failing  Retrieved sources are scanned for leaks, not just the response.
+killed   evaluators_read_the_snippet_only     11 failing  A source is its title and its url too, not only its snippet.
+killed   published_field_unscanned             2 failing  Every string field of a source is scanned, not a list somebody maintains.
 killed   finding_dedup_ignores_the_field       1 failing  Two fields of one source that leak at the same offset are two findings.
 killed   injection_bare_keyword_scan           7 failing  Injection detection requires the imperative shape, not a word.
 killed   injection_determiner_is_a_fixed_list    3 failing  One word of paraphrase does not defeat the injection list.
 killed   secret_check_knows_stripe_only        6 failing  The secret check knows more than one vendor prefix.
-killed   exemptions_are_unbounded              8 failing  An exemption applies only to a sentence short enough to be the line it describes.
+killed   exemptions_are_unbounded             10 failing  An exemption applies only to a sentence short enough to be the line it describes.
+killed   question_exemption_unbounded          2 failing  A question mark is a fragment too, so it carries the same bound as an opener.
 killed   ascii_hard_breaks_only                7 failing  Every character str.splitlines() calls a line break ends a claim.
 killed   ascii_terminators_only                1 failing  An ideographic full stop ends a claim, same as a period.
 killed   cjk_claim_weight_floor                1 failing  A claim-weight floor counted in Latin letters is the wrong unit for CJK.
 killed   boundary_requires_whitespace          5 failing  A full stop with no space after it still ends the sentence.
 
-all 21 mutants killed by the test named for them
+all 23 mutants killed by the test named for them
 ```
 
-Sixteen of those twenty-one are not hypotheticals. Each restores a bypass this
-repository actually shipped at some point on 2026-07-27:
+Eighteen of those twenty-three are not hypotheticals. Each restores a bypass
+this repository actually shipped at some point on 2026-07-27:
 `partial_gate_constructible`, `no_hard_break_split`, `no_clause_split`,
 `abbreviation_swallows_next_sentence`, `classifier_needs_a_digit`,
 `pii_ascii_separators_only` and `pii_scans_response_only` from the first
 adversarial pass; `evaluators_read_the_snippet_only`,
 `finding_dedup_ignores_the_field`, `injection_determiner_is_a_fixed_list`,
 `secret_check_knows_stripe_only`, `exemptions_are_unbounded`,
-`ascii_hard_breaks_only` and `boundary_requires_whitespace` from the second; and
-`ascii_terminators_only` and `cjk_claim_weight_floor`, which no reviewer found
-and the mutation run did. Two of the sixteen restore the bypass rather than the
-old code: `classifier_needs_a_digit` is a narrower stand-in for the digits or
-verbs whitelist, and `cjk_claim_weight_floor` reaches the same release by a
-different route, because the shipped `_WORD` was ASCII only and scored that
-sentence at zero tokens rather than one. The other five are bugs this code never
-had and could plausibly acquire.
+`ascii_hard_breaks_only`, `ascii_terminators_only` and
+`boundary_requires_whitespace` from the second; `published_field_unscanned` and
+`question_exemption_unbounded` from the third; and `cjk_claim_weight_floor`,
+which no reviewer found and the mutation run did, in the way described just
+above. Two of the eighteen restore the bypass rather than the old code:
+`classifier_needs_a_digit` is a narrower stand-in for the digits or verbs
+whitelist, and `cjk_claim_weight_floor` reaches the same release by a different
+route, because the shipped `_WORD` was ASCII only and scored that sentence at
+zero tokens rather than one. The other five are bugs this code never had and
+could plausibly acquire.
 
 Writing the harness immediately earned its keep. The first version of
 `classifier_exempts_everything` swapped `.match()` for `.search()`, which I
@@ -435,7 +453,7 @@ something past the gate, and got in seven ways:
 
 The suite was green for all seven, and the README of the day asserted the gate
 held. What the exercise measured is not the fixes, it is that gap. Every row
-above is now a fixture or a named test, and seven of the twenty-one mutants in
+above is now a fixture or a named test, and seven of the twenty-three mutants in
 `mutations/run.py` restore one of these bugs to check that the pin holds.
 
 Then a second reviewer read the fixed version, including the sentence above
@@ -447,14 +465,14 @@ interesting ones and they are at the top:
 | "Note that `<eleven words of allegation>`" | `_NON_ASSERTION` was anchored at the start and unbounded at the end, so matching the single word "Note" exempted any quantity of allegation behind it | `23_adv_exemption_prefix_laundering` |
 | "`<thirteen words of allegation>`, as set out below" | `_SELF_REFERENCE` is anchored at the end and was unbounded at the start, so the same trick ran backwards | `24_adv_exemption_suffix_laundering` |
 | an SSN, a card number and an API key in a source's title and url | fixture 22 taught the PII evaluator to read sources; it read `source.snippet` and stopped | `25_adv_pii_in_source_title_and_url` |
-| "…migration on 2026-02-11 [1].Northwind is laundering money" | the guard that protects decimals and abbreviations skipped every full stop not followed by a space | `26_adv_unicode_boundary_bypass` |
+| "…migration on 2026-02-11 [1].The chief executive was indicted for fraud in March 2026." | the guard that protects decimals and abbreviations skipped every full stop not followed by a space | `26_adv_unicode_boundary_bypass` |
 | bullets joined by U+2028, `\r`, `\v`, `\f` or `\x1c` | the hard break class was `\n` alone, while `str.splitlines()` treats ten characters as line breaks | `test_every_character_python_calls_a_line_break_is_a_claim_boundary` |
 | a card number separated by non-breaking or zero-width spaces | the separator class had been widened for typographic dashes but not for invisible spaces | `test_an_invisible_separator_does_not_hide_a_card_number` |
 | "Ignore **all of the** previous instructions" | the determiner between "ignore" and "instructions" was a fixed alternation of three words (`all`, `any`, `the`) | `test_one_word_of_paraphrase_does_not_defeat_the_injection_list` |
 | an injection phrase in a source's title | same scope bug as the PII one, in the file the PII fix was copied from | `test_an_injection_in_a_source_title_is_found` |
 | a GitHub, Slack, OpenAI or Google key | the secret check knew Stripe's `sk_live_` family and AWS access key ids, and stopped there | `test_the_secret_check_knows_more_than_one_vendor` |
 | two leaks at the same offset in two fields of one source | the finding key was (source id, offset), so the second one deduplicated away | `test_two_fields_of_one_source_do_not_collapse_into_one_finding` |
-| an allegation in Chinese | one word token, eleven characters, under both claim weight floors | `cjk_claim_weight_floor`, and see above |
+| an allegation in Chinese | the reviewer's half: `。` was not in the terminator class, so the sentence never ended. Fixing that exposed a second half nobody had reported, which is that one word token and eleven characters is under both claim weight floors | `ascii_terminators_only` for the first half, `cjk_claim_weight_floor` for the second, and see above for how the second was found |
 
 The first pass attacked what the classifier had never heard of. The second
 attacked what it had: an exemption list is a whitelist one level down, and the
@@ -462,6 +480,28 @@ README's own conclusion from pass one ("a whitelist cannot be a safety default")
 applied to the fix that conclusion produced. Both passes are the same finding at
 different depths, which is the argument for running the exercise more than once
 and for writing down what got in rather than what was repaired.
+
+A third pass then read this section, which is the version of the document that
+says all of the above, and got in twice more. Both are in the file the previous
+pass had touched last, and both are the same bug that pass had just fixed:
+
+| what got through | why | pinned as |
+| --- | --- | --- |
+| an SSN, a card number, an API key and an injection payload in a source's `published` field | the pass-two fix replaced `snippet` with a hand-written list of three field names, and `Citation` has four | `test_a_payload_in_the_published_field_of_a_source_is_found` |
+| "Did `<allegation>` and did the board then cover it up?" | pass two bounded `_NON_ASSERTION` and `_SELF_REFERENCE` by length and left `_QUESTION`, one line above them, unbounded | `test_a_leading_question_does_not_launder_an_allegation` |
+
+Neither is a new class of bug. The first is the source-scope bug for the third
+consecutive pass: snippet only, then three fields, then all of them. The second
+is the exemption-fragment bug for the second, in a file whose comment already
+explained why that shape is a wildcard. Both fixes are structural rather than
+enumerative, which is the only version of the fix that stops the pass after
+next: `scan_targets` now derives the fields from the dataclass, so adding one to
+`Citation` scans it, and every exemption now sits inside the same bound rather
+than beside it. `test_scan_targets_reads_every_string_field_of_a_source` fails
+if the list ever comes back.
+
+Three passes, three findings that a green suite and a confident README did not
+prevent. That is the number worth taking from this file.
 
 ## Layout
 
@@ -479,8 +519,8 @@ evalharness/
     injection.py       prompt injection, response and sources (blocking)
     support.py         lexical overlap (advisory, not entailment)
 fixtures/              26 labelled fixture outputs, synthetic
-tests/                 312 tests
-mutations/run.py       reintroduces 21 bugs, requires a named test to catch each
+tests/                 320 tests
+mutations/run.py       reintroduces 23 bugs, requires a named test to catch each
 ```
 
 Read `tests/` as the spec. Every test name is a sentence about behaviour, and
