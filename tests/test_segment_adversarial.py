@@ -119,7 +119,7 @@ def test_genuine_abbreviations_and_decimals_still_do_not_split(text):
 def test_serious_allegations_without_digits_or_reporting_verbs_still_need_a_source(sentence):
     """The worst of the five, and the reason the classifier default was inverted.
 
-    None of these contains a digit or one of the 39 verbs the first classifier
+    None of these contains a digit or one of the 41 verbs the first classifier
     whitelisted, so none of them was a factual claim and all of them were
     released with no citation at all.
     """

@@ -25,18 +25,34 @@ import re
 from typing import List, Tuple
 
 from ..model import EvaluatorResult, Finding, ModelOutput, Severity
-from .base import Evaluator
+from .base import Evaluator, scan_targets
 
 NAME = "prompt_injection"
+
+# Determiners an injection puts between the verb and its object. The first
+# version of the override pattern allowed "all", "any" and "the" and nothing
+# else, so "Ignore your previous instructions" and "Ignore these instructions",
+# which are closer to the canonical payload than the phrasing that did match,
+# both walked past a detector written to catch exactly them. One word of
+# paraphrase should not be enough.
+_DETERMINER = r"(?:all\s+of\s+the\s+|all\s+of\s+|all\s+|any\s+|the\s+|your\s+|my\s+|our\s+|these\s+|those\s+|every\s+)*"
 
 _PATTERNS: Tuple[Tuple[str, str, "re.Pattern[str]"], ...] = (
     (
         "injection_instruction_override",
         "instruction override",
         re.compile(
-            r"\b(?:ignore|disregard|forget|discard)\s+(?:all\s+|any\s+|the\s+)*"
-            r"(?:previous|prior|above|earlier|preceding|foregoing|system)\s+"
-            r"(?:instructions?|prompts?|rules?|directions?|guidance)\b",
+            r"\b(?:ignore|disregard|forget|discard|override)\s+" + _DETERMINER + r"(?:"
+            # With a pointer back at the conversation, any object will do.
+            r"(?:previous|prior|above|earlier|preceding|foregoing|system|original|initial)\s+"
+            r"(?:instructions?|prompts?|rules?|directions?|directives?|guidance|guidelines?)"
+            # Without one, the object has to be unambiguously conversational.
+            # "Ignore the rules" is a sentence about a card game or a building
+            # site; "ignore the instructions" is borderline and included,
+            # because on a retrieved source the fail-closed direction is to
+            # block. That trade is stated in the README limitations.
+            r"|(?:instructions?|prompts?|directives?)"
+            r")\b",
             re.IGNORECASE,
         ),
     ),
@@ -53,9 +69,23 @@ _PATTERNS: Tuple[Tuple[str, str, "re.Pattern[str]"], ...] = (
     (
         "injection_role_override",
         "role override",
+        # Two shapes after "you are now", and the second one is why this is not
+        # simply `\w+`. Requiring an article meant "You are now DAN", the most
+        # quoted jailbreak string there is, did not match, because a persona
+        # name arrives without one. Accepting any word instead makes "You are
+        # now able to export the report yourself" an injection, which is how a
+        # detector gets muted. So the article-less branch requires an ALL-CAPS
+        # token, which is what persona names look like and what ordinary
+        # sentence continuations do not. `(?-i:...)` keeps that branch
+        # case-sensitive inside an otherwise case-insensitive pattern.
         re.compile(
-            r"\byou\s+are\s+now\s+(?:a|an|the)\s+\w+|"
-            r"\bact\s+as\s+(?:a\s+|an\s+)?(?:unrestricted|jailbroken|uncensored|developer\s+mode)\b",
+            r"\byou(?:\s+are|'re|\s+will\s+be)\s+now\s+"
+            r"(?:(?:an?|the)\s+\w+|(?-i:[A-Z]{2,})\b)"
+            r"|\bfrom\s+now\s+on,?\s+you(?:\s+are|'re)\s+"
+            r"(?:(?:an?|the)\s+\w+|(?-i:[A-Z]{2,})\b)"
+            r"|\b(?:act|behave|respond|speak)\s+as\s+(?:a\s+|an\s+)?"
+            r"(?:unrestricted|jailbroken|uncensored|developer\s+mode|dan)\b"
+            r"|\bpretend\s+(?:that\s+)?you(?:\s+are|'re)\b",
             re.IGNORECASE,
         ),
     ),
@@ -91,11 +121,10 @@ class PromptInjectionEvaluator(Evaluator):
     def evaluate(self, output: ModelOutput) -> EvaluatorResult:
         findings: List[Finding] = []
 
-        targets = [("response", output.response)]
-        for source in output.sources:
-            targets.append(("source:{0}".format(source.id), source.snippet))
-
-        for location, text in targets:
+        # Title and url as well as snippet. A hostile document names itself,
+        # and "ignore your previous instructions" in a document title reaches
+        # the model exactly the way it does in the body.
+        for location, _field, text in scan_targets(output):
             if not text:
                 continue
             for code, label, pattern in _PATTERNS:

@@ -8,5 +8,5 @@
   ],
   "response": "Northwind Bank is under investigation by the FCA for money laundering failures. Its chief risk officer falsified the audit trail. The board knew about the fraud and covered it up.",
   "sources": [],
-  "notes": "Allowed until 2026-07-27, and this is the worst of the five. The classifier asked whether a sentence contained a digit or one of 39 whitelisted verbs. None of these three do, so none of them was a factual claim and all three were released unsourced. naive_gate REFUSES this input, which means the deliberately wrong implementation kept in the repo as a cautionary exhibit was stricter than the real gate on an entire class of defamatory prose."
+  "notes": "Allowed until 2026-07-27, and this is the worst of the five. The classifier asked whether a sentence contained a digit or one of 41 whitelisted verbs. None of these three do, so none of them was a factual claim and all three were released unsourced. naive_gate REFUSES this input, which means the deliberately wrong implementation kept in the repo as a cautionary exhibit was stricter than the real gate on an entire class of defamatory prose."
 }

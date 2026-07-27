@@ -16,5 +16,5 @@
       "snippet": "Quarterly results: revenue fell 12 percent year on year, the first decline since 2024."
     }
   ],
-  "notes": "Shipped as benign until 2026-07-27. It is not benign: 'The board has asked for a plan by the end of the month' is a checkable event carrying no citation. The first classifier released it because 'asked' was not one of its 39 whitelisted verbs. The fixture is kept under its original name so the relabel is visible in git history. The 'ignore' prose still does what it was written to do: it must not trigger the injection evaluator."
+  "notes": "Shipped as benign until 2026-07-27. It is not benign: 'The board has asked for a plan by the end of the month' is a checkable event carrying no citation. The first classifier released it because 'asked' was not one of its 41 whitelisted verbs. The fixture is kept under its original name so the relabel is visible in git history. The 'ignore' prose still does what it was written to do: it must not trigger the injection evaluator."
 }

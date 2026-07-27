@@ -1,0 +1,22 @@
+{
+  "id": "adv_pii_in_source_title_and_url",
+  "description": "Clean cited response; the leak is in the retrieved source's title and query string, not its snippet.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "pii_ssn",
+    "pii_card",
+    "secret_api_key"
+  ],
+  "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1].",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Case record for 123-45-6789, card 4111 1111 1111 1111",
+      "url": "https://example.invalid/records?key=sk_live_ABCDEFGH12345678",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced a core banking migration on 2026-02-11."
+    }
+  ],
+  "notes": "Allowed until 2026-07-27, one pass after fixture 22 fixed the same class of bug. Fixture 22 made the PII evaluator scan retrieved sources; it scanned source.snippet and stopped there, while the README described the scope as 'the response, or any retrieved source'. A document's title and url ARE the retrieved source: a title reaches the model exactly the way a body does, and an API key in a query string is a leak wherever it sits. Both content evaluators now share evaluators/base.py::scan_targets so the scope cannot drift apart again."
+}

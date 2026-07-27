@@ -1,0 +1,12 @@
+{
+  "id": "adv_exemption_suffix_laundering",
+  "description": "The same hole mirrored: allegations followed by a self-reference tail.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
+  "response": "Northwind Bank was fined fifty million dollars by the FCA for money laundering, as set out below. The bank is insolvent and its banking licence was revoked in March 2026, as described above.",
+  "sources": [],
+  "notes": "Allowed until 2026-07-27. `_SELF_REFERENCE` used .search() rather than .match() on purpose, because 'as set out below' arrives at the end of a sentence. Unanchored at both ends it exempted anything at all that happened to be followed by a pointer at the document. Same bound, same reason."
+}

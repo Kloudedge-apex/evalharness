@@ -9,7 +9,7 @@ each safety property this repository claims, reintroduces the bug that would
 break it, and requires that a specific named test goes red. A mutant nothing
 catches is a property nobody is actually testing, and the run exits non zero.
 
-Every mutant below is a bug that was really in this code at some point. Ten of
+Every mutant below is a bug that was really in this code at some point. Seven of
 them were the shipped behaviour until 2026-07-27.
 
     python3 mutations/run.py            # run them all
@@ -94,16 +94,17 @@ MUTANTS: Tuple[Mutant, ...] = (
         id="abbreviation_swallows_next_sentence",
         property_broken="An abbreviation does not merge the sentence after it into itself.",
         path="evalharness/segment.py",
-        old="        if last_token in _ABBREVIATIONS and not _starts_new_sentence(text, end):",
-        new="        if last_token in _ABBREVIATIONS:",
+        old="            if not _starts_new_sentence(text, end, allow_digit=allow_digit):\n"
+        "                continue",
+        new="            continue",
         caught_by=("test_an_abbreviation_does_not_swallow_the_sentence_after_it",),
     ),
     Mutant(
         id="classifier_needs_a_digit",
         property_broken="A claim with no digit in it still needs a source.",
         path="evalharness/segment.py",
-        old="    return len(_WORD.findall(body)) >= 3",
-        new='    return bool(re.search(r"\\d", body)) and len(_WORD.findall(body)) >= 3',
+        old="    return _has_claim_weight(words)",
+        new='    return bool(re.search(r"\\d", body)) and _has_claim_weight(words)',
         caught_by=(
             "test_serious_allegations_without_digits_or_reporting_verbs_still_need_a_source",
         ),
@@ -112,10 +113,10 @@ MUTANTS: Tuple[Mutant, ...] = (
         id="classifier_exempts_everything",
         property_broken="The exemption list is anchored. An exempt word mid-sentence is not exempt.",
         path="evalharness/segment.py",
-        old="    if _NON_ASSERTION.match(body):\n        return False",
-        new="    if re.search(\n"
-        '        _NON_ASSERTION.pattern.replace("^", "", 1), body, _NON_ASSERTION.flags\n'
-        "    ):\n        return False",
+        old="        if _NON_ASSERTION.match(body):\n            return False",
+        new="        if re.search(\n"
+        '            _NON_ASSERTION.pattern.replace("^", "", 1), body, _NON_ASSERTION.flags\n'
+        "        ):\n            return False",
         caught_by=("test_the_exemption_list_only_matches_at_the_start_of_a_sentence",),
     ),
     Mutant(
@@ -131,31 +132,113 @@ MUTANTS: Tuple[Mutant, ...] = (
     ),
     Mutant(
         id="pii_ascii_separators_only",
-        property_broken="A card number with typographic dashes is still a card number.",
+        property_broken="A card number with typographic or invisible separators is still a card number.",
         path="evalharness/evaluators/pii.py",
-        old='CARD_CANDIDATE = re.compile(r"\\b(?:\\d[ .‐-―-]?){13,19}\\b")',
-        new='CARD_CANDIDATE = re.compile(r"\\b(?:\\d[ .-]?){13,19}\\b")',
-        caught_by=("test_typographic_separators_do_not_hide_a_card_number",),
+        old='_SEP = r"[\\s.\\u2010-\\u2015\\u200b-\\u200d\\u2060\\ufeff-]"',
+        new='_SEP = r"[ .-]"',
+        caught_by=(
+            "test_typographic_separators_do_not_hide_a_card_number",
+            "test_an_invisible_separator_does_not_hide_a_card_number",
+        ),
     ),
     Mutant(
         id="pii_scans_response_only",
         property_broken="Retrieved sources are scanned for leaks, not just the response.",
-        path="evalharness/evaluators/pii.py",
-        old='        targets = [("response", output.response)]\n'
-        "        for source in output.sources:\n"
-        '            targets.append(("source:{0}".format(source.id), source.snippet))',
-        new='        targets = [("response", output.response)]',
+        path="evalharness/evaluators/base.py",
+        old='    for source in output.sources:\n'
+        '        location = "source:{0}".format(source.id)\n'
+        '        targets.append((location, "title", source.title))\n'
+        '        targets.append((location, "url", source.url))\n'
+        '        targets.append((location, "snippet", source.snippet))',
+        new="    return targets",
         caught_by=("test_a_leak_inside_a_retrieved_source_is_found_too",),
+    ),
+    Mutant(
+        id="evaluators_read_the_snippet_only",
+        property_broken="A source is its title and its url too, not only its snippet.",
+        path="evalharness/evaluators/base.py",
+        old='        targets.append((location, "title", source.title))\n'
+        '        targets.append((location, "url", source.url))\n',
+        new="",
+        caught_by=(
+            "test_pii_in_a_source_title_and_url_is_found",
+            "test_an_injection_in_a_source_title_is_found",
+        ),
+    ),
+    Mutant(
+        id="finding_dedup_ignores_the_field",
+        property_broken="Two fields of one source that leak at the same offset are two findings.",
+        path="evalharness/evaluators/pii.py",
+        old="                    key = (location, field, code, match.start())",
+        new="                    key = (location, code, match.start())",
+        caught_by=("test_two_fields_of_one_source_do_not_collapse_into_one_finding",),
     ),
     Mutant(
         id="injection_bare_keyword_scan",
         property_broken="Injection detection requires the imperative shape, not a word.",
         path="evalharness/evaluators/injection.py",
-        old='            r"\\b(?:ignore|disregard|forget|discard)\\s+(?:all\\s+|any\\s+|the\\s+)*"\n'
-        '            r"(?:previous|prior|above|earlier|preceding|foregoing|system)\\s+"\n'
-        '            r"(?:instructions?|prompts?|rules?|directions?|guidance)\\b",',
-        new='            r"\\b(?:ignore|disregard|forget|discard)\\b",',
+        old='            r"\\b(?:ignore|disregard|forget|discard|override)\\s+" + _DETERMINER + r"(?:"\n            # With a pointer back at the conversation, any object will do.\n            r"(?:previous|prior|above|earlier|preceding|foregoing|system|original|initial)\\s+"\n            r"(?:instructions?|prompts?|rules?|directions?|directives?|guidance|guidelines?)"\n            # Without one, the object has to be unambiguously conversational.\n            # "Ignore the rules" is a sentence about a card game or a building\n            # site; "ignore the instructions" is borderline and included,\n            # because on a retrieved source the fail-closed direction is to\n            # block. That trade is stated in the README limitations.\n            r"|(?:instructions?|prompts?|directives?)"\n            r")\\b",',
+        new='            r"\\b(?:ignore|disregard|forget|discard|override)\\b",',
         caught_by=("test_does_not_fire_on_ordinary_prose",),
+    ),
+    Mutant(
+        id="injection_determiner_is_a_fixed_list",
+        property_broken="One word of paraphrase does not defeat the injection list.",
+        path="evalharness/evaluators/injection.py",
+        old='_DETERMINER = r"(?:all\\s+of\\s+the\\s+|all\\s+of\\s+|all\\s+|any\\s+|the\\s+|your\\s+|my\\s+|our\\s+|these\\s+|those\\s+|every\\s+)*"',
+        new='_DETERMINER = r"(?:all\\s+|any\\s+|the\\s+)*"',
+        caught_by=("test_one_word_of_paraphrase_does_not_defeat_the_injection_list",),
+    ),
+    Mutant(
+        id="secret_check_knows_stripe_only",
+        property_broken="The secret check knows more than one vendor prefix.",
+        path="evalharness/evaluators/pii.py",
+        old='API_KEY = re.compile(\n    r"\\b(?:"\n    r"(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{8,}"      # Stripe and lookalikes\n    r"|sk-(?:proj-|ant-|or-)?[A-Za-z0-9_-]{16,}"        # OpenAI, Anthropic, OpenRouter\n    r"|gh[pousr]_[A-Za-z0-9]{16,}"                      # GitHub personal/OAuth/app tokens\n    r"|github_pat_[A-Za-z0-9_]{20,}"\n    r"|AIza[0-9A-Za-z_-]{16,}"                          # Google API key\n    r"|xox[baprs]-[A-Za-z0-9-]{10,}"                    # Slack\n    r"|glpat-[A-Za-z0-9_-]{16,}"                        # GitLab\n    r"|(?:ey[A-Za-z0-9_-]{8,}\\.){2}[A-Za-z0-9_-]{8,}"   # JWT\n    r")\\b"\n)\n',
+        new='API_KEY = re.compile(r"\\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{8,}\\b")\n',
+        caught_by=("test_the_secret_check_knows_more_than_one_vendor",),
+    ),
+    Mutant(
+        id="exemptions_are_unbounded",
+        property_broken="An exemption applies only to a sentence short enough to be the line it describes.",
+        path="evalharness/segment.py",
+        old="    if len(words) <= _EXEMPTION_WORD_LIMIT:",
+        new="    if True:",
+        caught_by=(
+            "test_an_opener_cannot_launder_the_allegation_behind_it",
+            "test_a_tail_cannot_launder_the_allegation_in_front_of_it",
+        ),
+    ),
+    Mutant(
+        id="ascii_hard_breaks_only",
+        property_broken="Every character str.splitlines() calls a line break ends a claim.",
+        path="evalharness/segment.py",
+        old='_HARD_BREAK = re.compile(r"[\\n\\r\\v\\f\\x1c\\x1d\\x1e\\x85\\u2028\\u2029]+")',
+        new='_HARD_BREAK = re.compile(r"[\\n]+")',
+        caught_by=("test_every_character_python_calls_a_line_break_is_a_claim_boundary",),
+    ),
+    Mutant(
+        id="ascii_terminators_only",
+        property_broken="An ideographic full stop ends a claim, same as a period.",
+        path="evalharness/segment.py",
+        old='_TERMINATOR = re.compile(r"[.!?。！？؟۔।॥…]+")',
+        new='_TERMINATOR = re.compile(r"[.!?]+")',
+        caught_by=("test_an_ideographic_full_stop_ends_a_claim",),
+    ),
+    Mutant(
+        id="cjk_claim_weight_floor",
+        property_broken="A claim-weight floor counted in Latin letters is the wrong unit for CJK.",
+        path="evalharness/segment.py",
+        old='    return characters >= 4 and bool(_CJK.search("".join(words)))',
+        new="    return False",
+        caught_by=("test_an_ideographic_full_stop_ends_a_claim",),
+    ),
+    Mutant(
+        id="boundary_requires_whitespace",
+        property_broken="A full stop with no space after it still ends the sentence.",
+        path="evalharness/segment.py",
+        old="    return following.isdigit() or following.islower()",
+        new="    return True",
+        caught_by=("test_a_missing_space_after_a_full_stop_still_ends_the_sentence",),
     ),
 )
 

@@ -1,0 +1,12 @@
+{
+  "id": "adv_exemption_prefix_laundering",
+  "description": "Three allegations, each wrapped in an opener that the exemption list recognises.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
+  "response": "Note that Northwind Bank is under investigation by the FCA for money laundering. Review of the 2025 accounts shows the bank is insolvent and its licence was revoked. Here is the finding: the chief risk officer falsified the audit trail and the board covered it up.",
+  "sources": [],
+  "notes": "Allowed until the second adversarial pass on 2026-07-27. Fixture 21 inverted the classifier so that a sentence needs a citation unless it matches an exemption, and the README called that the most useful thing in the repository. It did not ask the next question: an exemption list is a whitelist one level down. `_NON_ASSERTION` was anchored at the start and unbounded at the end, so a three-word opener exempted any quantity of allegation stapled behind it. The fix is a length bound, not a longer list: an exemption applies only to a sentence short enough to be the courtesy line it describes."
+}
