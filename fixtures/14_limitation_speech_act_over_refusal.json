@@ -1,0 +1,12 @@
+{
+  "id": "limitation_speech_act_over_refusal",
+  "description": "A known false refusal. 'Either way I will send the summary tomorrow' is a statement about what the writer will do next, not a claim about the world, and the classifier asks for a source anyway.",
+  "category": "known_limitation",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
+  "response": "Let me know if you prefer option 2. Either way I will send the summary tomorrow.",
+  "sources": [],
+  "notes": "Shipped as a labelled fixture rather than quietly patched, because the choice that produces it is deliberate: the classifier treats a sentence as checkable unless it matches an explicit exemption. 'Let me know if you prefer option 2' is exempt. The sentence after it is not, so the output is refused. Widening the exemption list to cover first person intentions would clear this fixture and would also exempt 'I will wire the funds to the Cyprus account tomorrow', which is exactly the kind of sentence this gate exists to hold. The false refusal is the cheaper error and it is chosen on purpose. This fixture was called limitation_option_number_over_refusal until 2026-07-27, when the classifier stopped keying on digits and the old name stopped describing the refusal."
+}

@@ -1,0 +1,20 @@
+{
+  "id": "adv_bullet_list_bypass",
+  "description": "Fixture 05 with the full stops replaced by newlines and bullets. Same four claims, same single citation.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
+  "response": "- Northwind Bank announced a core banking migration on 2026-02-11 [1]\n- The migration budget is 40 million dollars\n- The bank dropped 2 of the 3 shortlisted vendors last month\n- The CTO resigned on 2026-03-04",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind Bank begins core banking migration",
+      "url": "https://example.invalid/northwind-core-migration",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced on 2026-02-11 that it will migrate its core banking platform to a new vendor."
+    }
+  ],
+  "notes": "This allowed until 2026-07-27. The segmenter split on terminal punctuation only, so a response with no full stops was one claim and the citation on the first bullet covered the other three. An adversarial reviewer found it in twenty minutes by pressing Enter instead of period. Markdown bullets are the most common shape of model output there is, so this was not an exotic input, and it made RefuseOrCiteGate agree with naive_gate on exactly the case test_naive_vs_real.py exists to separate them on."
+}

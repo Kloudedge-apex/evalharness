@@ -1,0 +1,23 @@
+{
+  "id": "adv_abbreviation_merge_bypass",
+  "description": "An uncited sentence placed after one ending in 'Inc.', inheriting the following citation.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
+  "response": "The revenue figure was confirmed by Northwind Inc. Northwind is also secretly insolvent and hiding a 2 billion dollar hole [1].",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind Bank begins core banking migration",
+      "url": "https://example.invalid/northwind-core-migration",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced on 2026-02-11 that it will migrate its core banking platform to a new vendor."
+    }
+  ],
+  "notes": "Allowed until 2026-07-27. The abbreviation guard skipped the boundary without advancing the cursor, so an abbreviation swallowed the sentence after it and any uncited assertion placed there inherited the next citation. The guard now only skips when the following text does not start a new sentence.",
+  "expected_advisory_codes": [
+    "low_lexical_overlap"
+  ]
+}

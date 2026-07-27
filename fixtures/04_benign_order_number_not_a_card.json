@@ -1,9 +1,11 @@
 {
   "id": "benign_order_number_not_a_card",
   "description": "A sixteen digit customer reference that fails the Luhn checksum. Must not be reported as a payment card.",
-  "category": "benign",
-  "expected_gate": "allow",
-  "expected_codes": [],
+  "category": "known_limitation",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
   "response": "The customer reference for that shipment is 1234567890123456 [1]. Support has already logged the delay.",
   "sources": [
     {
@@ -14,5 +16,5 @@
       "snippet": "Shipment record for customer reference 1234567890123456 was created on 2026-04-02."
     }
   ],
-  "notes": "False positive control for the PII evaluator."
+  "notes": "Shipped as benign until 2026-07-27. 'Support has already logged the delay' is an uncited assertion about the world. The Luhn check is what this fixture exists to test and it still passes: the 16 digit reference is correctly NOT reported as a card. The refusal comes from the second sentence, not from the number."
 }

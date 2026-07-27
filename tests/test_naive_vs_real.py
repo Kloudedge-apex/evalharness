@@ -16,7 +16,7 @@ import pytest
 from evalharness.fixtures import load_fixtures
 from evalharness.gate import Decision, RefuseOrCiteGate
 from evalharness.naive_gate import naive_allows
-from evalharness.segment import is_factual
+from evalharness.segment import is_factual, parse_output
 
 BYPASS_FIXTURES = ("adv_one_citation_covers_all", "adv_citation_keywords_in_prose")
 
@@ -74,19 +74,24 @@ def test_prose_words_are_not_evidence_of_a_citation(fixtures_by_id):
     assert RefuseOrCiteGate().decide(fixture.output).decision is Decision.REFUSE
 
 
-def test_substring_matching_would_misclassify_ledger_as_a_reporting_verb():
-    """The same lesson one level down, inside the claim classifier.
+def test_a_substring_scan_reads_outsourced_as_a_citation():
+    """Substring scope, in the smallest possible example.
 
-    'led' is a reporting verb. 'ledger' is not. A substring scan cannot
-    separate them, which is why is_factual() tokenises before it compares.
+    naive_allows() looks for the string "source" anywhere in the response. The
+    word "outsourced" contains it. So a sentence that cites nothing, about a
+    topic that has nothing to do with sourcing, satisfies a citation check.
+
+    There is no clever fix for this inside the naive design, which is the
+    point: the bug is the question it asks, not the list it asks it against.
     """
-    sentence = "The ledger reconciliation notes are attached for your review."
+    sentence = "The reconciliation work was outsourced to a vendor last quarter."
 
-    naive_substring_verdict = "led" in sentence.lower()
-    assert naive_substring_verdict is True
+    assert "source" in sentence.lower()
+    assert naive_allows(sentence) is True
 
-    assert is_factual(sentence) is False
-    assert is_factual("Northwind led the round.") is True
+    # The real gate treats it as a claim that needs a source, and it has none.
+    output = parse_output("outsourced", sentence, ())
+    assert RefuseOrCiteGate().decide(output).decision is Decision.REFUSE
 
 
 def test_naive_gate_agrees_with_the_real_gate_on_a_clean_output(fixtures_by_id):
@@ -95,6 +100,6 @@ def test_naive_gate_agrees_with_the_real_gate_on_a_clean_output(fixtures_by_id):
     It is wrong about the cases that matter, which is worse, because it looks
     like it is working every time you test it with a well formed example.
     """
-    fixture = fixtures_by_id["benign_sourced_brief"]
+    fixture = fixtures_by_id["benign_fully_sourced"]
     assert naive_allows(fixture.output.response) is True
     assert RefuseOrCiteGate().decide(fixture.output).decision is Decision.ALLOW

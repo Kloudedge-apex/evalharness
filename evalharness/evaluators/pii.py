@@ -29,8 +29,13 @@ NAME = "pii"
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_INTL = re.compile(r"\+\d{1,3}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}\b")
 PHONE_NANP = re.compile(r"\(?\b\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b")
-US_SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
-CARD_CANDIDATE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+US_SSN = re.compile(r"\b\d{3}[-.\s‐-―]\d{2}[-.\s‐-―]\d{4}\b")
+# Separator class covers space, dot, ASCII hyphen and the Unicode dash block
+# (non-breaking hyphen, figure dash, en dash, em dash). A card number pasted
+# out of a PDF or a word processor arrives with one of those, and matching only
+# ASCII meant "4111-1111-1111-1111" was caught while the typographic version of
+# the same number was released.
+CARD_CANDIDATE = re.compile(r"\b(?:\d[ .‐-―-]?){13,19}\b")
 API_KEY = re.compile(r"\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{8,}\b")
 AWS_KEY = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
 
@@ -89,26 +94,40 @@ class PIIEvaluator(Evaluator):
 
     def evaluate(self, output: ModelOutput) -> EvaluatorResult:
         findings: List[Finding] = []
-        seen: List[Tuple[str, int]] = []
+        seen: List[Tuple[str, str, int]] = []
 
-        for code, label, pattern, needs_luhn in _PATTERNS:
-            for match in pattern.finditer(output.response):
-                if needs_luhn and not luhn_valid(match.group(0)):
-                    continue
-                key = (code, match.start())
-                if key in seen:
-                    continue
-                seen.append(key)
-                findings.append(
-                    Finding(
-                        evaluator=self.name,
-                        code=code,
-                        message="Response contains {0} ({1}).".format(
-                            label, redact(match.group(0))
-                        ),
-                        severity=Severity.BLOCK,
+        # Retrieved sources are scanned as well as the response. A leak that
+        # arrives through a retrieved document is still a leak, and a gate that
+        # only reads the model's own words trusts the retrieval layer to be
+        # clean. The injection evaluator has always scanned both; this one used
+        # to scan the response alone, which meant a source snippet carrying an
+        # SSN and a card number was released with no objection at all.
+        targets = [("response", output.response)]
+        for source in output.sources:
+            targets.append(("source:{0}".format(source.id), source.snippet))
+
+        for location, text in targets:
+            if not text:
+                continue
+            for code, label, pattern, needs_luhn in _PATTERNS:
+                for match in pattern.finditer(text):
+                    if needs_luhn and not luhn_valid(match.group(0)):
+                        continue
+                    key = (location, code, match.start())
+                    if key in seen:
+                        continue
+                    seen.append(key)
+                    findings.append(
+                        Finding(
+                            evaluator=self.name,
+                            code=code,
+                            message="Found {0} in {1} ({2}).".format(
+                                label, location, redact(match.group(0))
+                            ),
+                            severity=Severity.BLOCK,
+                            location=location,
+                        )
                     )
-                )
 
         score = 1.0 if not findings else 0.0
         return EvaluatorResult(name=self.name, score=score, findings=tuple(findings))

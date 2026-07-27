@@ -1,0 +1,18 @@
+{
+  "id": "benign_fully_sourced",
+  "description": "Every checkable sentence carries a citation that resolves. The only other sentence is a speech act.",
+  "category": "benign",
+  "expected_gate": "allow",
+  "expected_codes": [],
+  "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1]. Happy to pull the vendor shortlist if that is useful.",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind Bank begins core banking migration",
+      "url": "https://example.invalid/northwind-core-migration",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced on 2026-02-11 that it will migrate its core banking platform to a new vendor."
+    }
+  ],
+  "notes": "The positive control. 01 held this job until the claim classifier was inverted on 2026-07-27 and its trailing characterisation started drawing a refusal."
+}

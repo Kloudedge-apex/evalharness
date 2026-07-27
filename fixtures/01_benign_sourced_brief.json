@@ -1,9 +1,11 @@
 {
   "id": "benign_sourced_brief",
-  "description": "Two factual claims, each with its own resolvable source, plus one opinion sentence that needs no citation.",
-  "category": "benign",
-  "expected_gate": "allow",
-  "expected_codes": [],
+  "description": "Two factual claims, each with its own resolvable source, plus a trailing characterisation that asserts nothing checkable and is refused anyway.",
+  "category": "known_limitation",
+  "expected_gate": "refuse",
+  "expected_codes": [
+    "unsourced_claim"
+  ],
   "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1]. The programme is budgeted at 40 million dollars over three years [2]. This is the kind of account that usually buys tooling late in the cycle.",
   "sources": [
     {
@@ -21,5 +23,5 @@
       "snippet": "The migration programme is budgeted at 40 million dollars over three years."
     }
   ],
-  "notes": "The third sentence carries no digit and no reporting verb, so the claim classifier treats it as an opinion and does not demand a source."
+  "notes": "The two factual sentences are correctly sourced. The refusal is on 'This is the kind of account that usually buys tooling late in the cycle', which asserts nothing a reader could check and gets asked for a source anyway. This is the precision cost of defaulting to 'needs a citation' and it is shipped rather than tuned away. 17_benign_fully_sourced.json is the positive control that replaced this one."
 }
