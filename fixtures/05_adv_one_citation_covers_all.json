@@ -1,0 +1,18 @@
+{
+  "id": "adv_one_citation_covers_all",
+  "description": "One real citation on the first claim, three unsourced factual claims after it. This is the fixture the naive keyword-anywhere gate lets through.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": ["unsourced_claim"],
+  "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1]. The migration budget is 40 million dollars. The bank dropped 2 of the 3 shortlisted vendors last month. The CTO resigned on 2026-03-04.",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind Bank begins core banking migration",
+      "url": "https://example.invalid/northwind-core-migration",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced on 2026-02-11 that it will migrate its core banking platform to a new vendor."
+    }
+  ],
+  "notes": "Document scope versus claim scope. The presence of a citation somewhere is not evidence about the sentence next to it."
+}

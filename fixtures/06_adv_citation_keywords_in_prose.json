@@ -1,0 +1,10 @@
+{
+  "id": "adv_citation_keywords_in_prose",
+  "description": "No citations at all, but the strings 'according to', 'source' and 'http' appear in ordinary prose. The naive gate reads those as evidence of sourcing.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": ["unsourced_claim"],
+  "response": "According to the team, Northwind closed a 12 million dollar round last week. We source that read from the usual channels, and the http feed has been reliable.",
+  "sources": [],
+  "notes": "Substring scope versus token scope. This is the exact failure I shipped once: an unrelated word satisfied a check it should not have."
+}

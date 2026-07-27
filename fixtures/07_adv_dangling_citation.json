@@ -1,0 +1,25 @@
+{
+  "id": "adv_dangling_citation",
+  "description": "The second claim cites [3], but only sources 1 and 2 were supplied. A marker that resolves to nothing is not a citation.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": ["dangling_citation"],
+  "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1]. The programme is budgeted at 40 million dollars over three years [3].",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind Bank begins core banking migration",
+      "url": "https://example.invalid/northwind-core-migration",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced on 2026-02-11 that it will migrate its core banking platform to a new vendor."
+    },
+    {
+      "id": "2",
+      "title": "Northwind board pack, February 2026",
+      "url": "https://example.invalid/northwind-board-pack-feb-2026",
+      "published": "2026-02-18",
+      "snippet": "The migration programme is budgeted at 40 million dollars over three years."
+    }
+  ],
+  "notes": "Fabricating a marker is cheaper for a model than fabricating a document, so this failure is common."
+}

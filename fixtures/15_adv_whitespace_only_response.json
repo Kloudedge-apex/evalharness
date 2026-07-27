@@ -1,0 +1,10 @@
+{
+  "id": "adv_whitespace_only_response",
+  "description": "A whitespace only response. Refused rather than passed through, because an empty draft at this point means something upstream failed.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": ["empty_response"],
+  "response": "   \n   ",
+  "sources": [],
+  "notes": "Degenerate input is where fail open bugs hide."
+}

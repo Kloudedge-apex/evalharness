@@ -1,0 +1,19 @@
+{
+  "id": "adv_unrelated_source_cited",
+  "description": "A funding claim cited to a document about an office lease. The gate ALLOWS this, and the advisory overlap check flags it.",
+  "category": "adversarial",
+  "expected_gate": "allow",
+  "expected_codes": [],
+  "expected_advisory_codes": ["low_lexical_overlap"],
+  "response": "Northwind closed a 12 million dollar funding round on 2026-01-20 [1].",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind opens a new office in Leeds",
+      "url": "https://example.invalid/northwind-leeds-office",
+      "published": "2026-01-19",
+      "snippet": "Northwind has signed a lease on office space in Leeds, with the move planned for the autumn."
+    }
+  ],
+  "notes": "This is the honest limit of the design and it is a fixture rather than a footnote. The gate enforces that a claim is SOURCED. It does not check that the source SUPPORTS the claim, because that needs an entailment model and this repository makes no inference calls. The overlap check is a lexical hint for a human, not a verdict."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "benign_no_factual_claims",
+  "description": "A purely conversational reply. Nothing checkable is asserted, so nothing needs a citation.",
+  "category": "benign",
+  "expected_gate": "allow",
+  "expected_codes": [],
+  "response": "Happy to walk through the options whenever suits you. Nothing here needs a decision from your side yet.",
+  "sources": [],
+  "notes": "Guards against the obvious over-correction: a gate that refuses everything without a citation would refuse this, and would be useless."
+}

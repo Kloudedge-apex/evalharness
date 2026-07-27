@@ -1,0 +1,18 @@
+{
+  "id": "adv_unresolvable_source",
+  "description": "The claim cites [1], and [1] exists, but it is an empty stub with no locator and no retrieved text. Nobody can check it.",
+  "category": "adversarial",
+  "expected_gate": "refuse",
+  "expected_codes": ["unresolvable_source"],
+  "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1].",
+  "sources": [
+    {
+      "id": "1",
+      "title": "",
+      "url": "",
+      "published": "",
+      "snippet": ""
+    }
+  ],
+  "notes": "A source object that exists is not the same as a source a reader can open."
+}

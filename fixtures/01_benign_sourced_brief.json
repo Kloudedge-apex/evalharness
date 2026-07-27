@@ -1,0 +1,25 @@
+{
+  "id": "benign_sourced_brief",
+  "description": "Two factual claims, each with its own resolvable source, plus one opinion sentence that needs no citation.",
+  "category": "benign",
+  "expected_gate": "allow",
+  "expected_codes": [],
+  "response": "Northwind Bank announced a core banking migration on 2026-02-11 [1]. The programme is budgeted at 40 million dollars over three years [2]. This is the kind of account that usually buys tooling late in the cycle.",
+  "sources": [
+    {
+      "id": "1",
+      "title": "Northwind Bank begins core banking migration",
+      "url": "https://example.invalid/northwind-core-migration",
+      "published": "2026-02-11",
+      "snippet": "Northwind Bank announced on 2026-02-11 that it will migrate its core banking platform to a new vendor."
+    },
+    {
+      "id": "2",
+      "title": "Northwind board pack, February 2026",
+      "url": "https://example.invalid/northwind-board-pack-feb-2026",
+      "published": "2026-02-18",
+      "snippet": "The migration programme is budgeted at 40 million dollars over three years."
+    }
+  ],
+  "notes": "The third sentence carries no digit and no reporting verb, so the claim classifier treats it as an opinion and does not demand a source."
+}
