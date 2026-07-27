@@ -48,6 +48,23 @@ tree. It runs the suite once per mutant, so it needs the interpreter that has
 pytest installed, which is why it is written `.venv/bin/python` here. See
 [what a green suite proves](#a-note-on-what-a-green-suite-proves).
 
+## How this was built
+
+In a day, with heavy AI assistance. The commit history says so and there is no
+point pretending otherwise.
+
+The mutation harness is why I trust the result anyway. Twenty three known bugs
+are reintroduced one at a time, and the suite has to catch each one by the test
+named for it. A test that passes whether or not the bug is present does not
+count. That is the check that makes the other numbers here mean something, and
+it is exactly the check I want on code I did not write by hand, which is an
+increasing share of everyone's code.
+
+One of those mutants survived a fully green suite, because the test that was
+supposed to catch it was measuring the wrong layer. That is written up in
+[what a green suite proves](#a-note-on-what-a-green-suite-proves), and it is
+the most useful thing in this repository.
+
 ## What this is
 
 One layer of a system I built at my own company, rewritten from scratch and
